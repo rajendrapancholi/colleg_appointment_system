@@ -63,6 +63,65 @@ const setAvailability = async (req, res, next) => {
   }
 };
 
+// Controller to update avalability
+const updateAvailabilitySlot = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { startTime, endTime } = req.body;
+
+    if (!req.user || !req.user.id) {
+      return next(new HttpError("No professor ID found", 400));
+    }
+
+    if (!startTime || !endTime) {
+      return next(new HttpError("Start time and end time are required", 400));
+    }
+
+    // Ensure startTime is before endTime
+    if (new Date(startTime) >= new Date(endTime)) {
+      return next(new HttpError("Start time must be before end time", 400));
+    }
+
+    const professorId = req.user.id;
+
+    // Slot exist or not, and its professor
+    const slot = await Availability.findOne({ _id: id, professorId });
+    if (!slot) {
+      return next(new HttpError("Availability slot not found", 404));
+    }
+
+    // Overlap check, except current slot
+    const existingAvailability = await Availability.findOne({
+      professorId,
+      _id: { $ne: id },
+      startTime: { $lt: new Date(endTime) },
+      endTime: { $gt: new Date(startTime) },
+    });
+
+    if (existingAvailability) {
+      return next(new HttpError("time slot overlaps", 400));
+    }
+
+    slot.startTime = startTime;
+    slot.endTime = endTime;
+    await slot.save();
+
+    const formattedStartTime = moment.utc(slot.startTime).format('MMMM Do YYYY, h:mm:ss a');
+    const formattedEndTime = moment.utc(slot.endTime).format('MMMM Do YYYY, h:mm:ss a');
+
+    res.status(200).json({
+      message: "Availability timing updated successfully",
+      availability: {
+        ...slot.toObject(),
+        startTime: formattedStartTime,
+        endTime: formattedEndTime,
+      },
+    });
+  } catch (error) {
+    console.log(error);
+    return next(new HttpError("Updating availability failed", 500));
+  }
+};
 
 
   const cancelAppointments = async(req,res,next) => {
@@ -107,4 +166,4 @@ const setAvailability = async (req, res, next) => {
       return next(new HttpError(error));
     }
   };
-export {setAvailability, cancelAppointments};
+export {setAvailability, cancelAppointments, updateAvailabilitySlot};

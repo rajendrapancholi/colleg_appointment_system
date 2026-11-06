@@ -28,7 +28,7 @@ app.use('/professor',professorRoutes);
 app.use('/general', generalRoutes);
 app.use(notFound)
 app.use(errorMiddleware)
-const PORT = process.env.PORT  || 5001;
+const PORT = process.env.PORT  || 5000;
 mongoose.connect(process.env.MONGO_URL, {
 }).then(() => {
     app.listen(PORT, () => console.log(`Server Port: ${PORT}`));  
